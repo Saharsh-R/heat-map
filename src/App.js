@@ -7,7 +7,8 @@ import * as d3 from 'd3';
 import d3Tip from "d3-tip";
 import { useEffect, useState,useRef } from 'react';
 import { Grid } from '@material-ui/core';
-
+import {legendColor} from 'd3-svg-legend';
+import Button from '@material-ui/core/Button';
 
 
 function Copyright() {
@@ -24,112 +25,113 @@ function Copyright() {
 }
 
 
-function BarChart({ id, data, width = 800, height = 500 }) {
-  const padding = 50;
-  var times = data.map(d => {
-    let a = d.Seconds
-    return new Date(1970, 0, 1, 0, Math.floor(a/60), a % 60)
-  });
+function BarChart({ id, data, width = 1200, height = 500 }) {
+  const base = data.baseTemperature;
+  data = data['monthlyVariance'];
+  const padding = 60;
+ 
   
-  var years = data.map(d => d.Year);
-
+  var years = data.map(d => d.year);
+  const yearRange = d3.extent(years)
+  const barWidth = (width - padding - padding) / (yearRange[1] - yearRange[0])
   const xScale = d3.scaleTime()
-  .domain([d3.min(years) - 1, d3.max(years) + 1])
+  .domain(yearRange)
   .range([padding, width -  padding])
   ;
 
-  const yScale = d3.scaleTime()
-    .domain(d3.extent(times))
-    .range([height - padding , padding])
+  const yScale = d3.scaleBand()
+    .domain([0,1,2,3,4,5,6,7,8,9,10,11])
+    .range([padding, height - padding ])
     ;
 
-  const yAxis = d3.axisLeft(yScale).tickFormat(d3.timeFormat('%M:%S'));
+  const yAxis = d3.axisLeft(yScale).tickFormat(
+    (month) => {
+      var date = new Date(0);
+      date.setUTCMonth(month);
+      return d3.timeFormat("%B")(date);
+    }
+  );
   const xAxis = d3.axisBottom(xScale).tickFormat(d3.format('d'));
-
+  
 
   useEffect(() => {
-
-    // const tooltip = d3
-    //   .select('#tooltip')
-    //   .attr('id', 'tooltip')
-    //   .style('opacity', 0);
-    var color = d3.scaleOrdinal(d3.schemeSet1);
-    var keys = ['Doped', 'Not Doped'];
-    var size = 20
+    const z = d3.interpolateTurbo
+    var myColor = d3.scaleSequential(z).domain(d3.extent(data , d => d.variance))
+      
 
     const svg = d3
       .select('#' + id)
       .append('svg')
       .attr('width', width)
-      .attr('height', height)
-    const legend = svg.append('g').attr('id', 'legend')
+      .attr('height', height + 35 )
 
-    
-    
 
-    legend.selectAll("mydots")
-      .data(keys)
-      .enter()
-      .append("rect")
-        .attr("x", 600)
-        .attr("y", function(d,i){ return 300 + i*(size+5)}) // 100 is where the first dot appears. 25 is the distance between dots
-        .attr("width", size)
-        .attr("height", size)
-        .style("fill", function(d){ return color(d)})
+    svg.append("g")
+      .attr('id' , 'legend')
+      .attr("class", "legendSequential")
+      .attr("transform", `translate(${padding},${height - padding + 40})`);
 
-    legend.selectAll("mylabels")
-      .data(keys)
-      .enter()
-      .append("text")
-        .attr("x", 600 + size*1.2)
-        .attr("y", function(d,i){ return 300 + i*(size+5) + (size/2)}) // 100 is where the first dot appears. 25 is the distance between dots
-        .style("fill", function(d){  return color(d)})
-        .text(function(d){ return d})
-        .attr("text-anchor", "left")
-        .style("alignment-baseline", "middle")
-    
+    var legendSequential = legendColor()
+        .shapeWidth(30)
+        .cells(10)
+        .orient("horizontal")
+        .scale(myColor) 
+
+    svg.select(".legendSequential")
+      .call(legendSequential);
 
     var tip = d3Tip()
       .attr('class', 'd3-tip')
       .attr('id', 'tooltip')
       .offset([-10, 0])
-      .html(function(i,d) {
-        let z = color('Not Doped')
-        if (d.URL){
-          z = color('Doped')
-        }
-        
-        let ans =  `Name: <span style='color:${z}'>` + d.Name + ", " + d.Nationality+ `</span> <br />Finish Time: <span style='color:${z}'>` +d.Time+`</span> Year: <span style='color:${z}'>"+(d.Year)+"</span>` ;
-        if (d.URL){
-          ans += "<br />"+d.Doping;
-        }
-        d3.select('#tooltip').attr('data-year', d.Year);
-        return ans
-      })
- 
+      .html(function(d) {
+        return d;
+      });
+
 
     svg
-      .selectAll(".dot")
-      .append("a")
+      .selectAll("whydoesthisnotworkwhenrect")
       .data(data)
       .enter()
-      .append("circle")
-      .attr("class", "dot")
-      .attr("r", 4.5)
-      .attr('data-xvalue', d => d.Year)
-      .attr('data-yvalue', (d, i )=> times[i])
-      .attr("cx", function(d) {
-        return xScale(d.Year);
-      })
-      .attr("cy", function(d, i) {
-        return yScale(times[i]);
-      })
-      .style("fill",  d => color(d.URL == '' ? 'Not Doped': 'Doped'))
-      .on('mouseover', tip.show)
-      .on('mouseout', tip.hide);
-    // important! Tooltip will not work without this.
-    svg.call(tip);
+      .append("rect")
+      .attr("class", "cell")
+      .attr('data-month', d => d.month - 1)
+      .attr('data-year', d => d.year)
+      .attr('data-temp', d => base + d.variance)
+      .attr('width', barWidth)
+      .attr('height', (height - 2 * padding)/12)
+      .attr('x', d =>  xScale(d.year))
+      .attr('y', d => yScale(d.month - 1))
+      .style('fill', d => myColor(d.variance))
+      .on('mouseover', function(e, d) {
+        // has to be in this way. (e, d) => {} will not work.
+          tip.attr('data-year', d.year);
+          var formatTime = d3.timeFormat('%Y - %B')
+          var date = new Date(d.year, d.month);
+          var str =
+              "<span class='date'>" +
+              formatTime(date) +
+              '</span>' +
+              '<br />' +
+              "<span style='color:orange' class='temperature'>" +
+              d3.format('.1f')(base + d.variance) +
+              '&#8451;' +
+              '</span>' +
+              '<br />' +
+              "<span class='variance'>" +
+              d3.format('+.1f')(d.variance) +
+              '&#8451;' +
+              '</span>';
+          tip.show(str, this); 
+         
+          d3.select(e.currentTarget).style("fill", "black");
+        })
+      .on('mouseout', function(e, d) {
+          d3.select(e.currentTarget).style("fill", myColor(d.variance));
+         tip.hide(this); 
+        });
 
+    svg.call(tip);
 
     svg.append('g')
       .attr('transform', 'translate('+ padding + ', 0)')
@@ -143,16 +145,17 @@ function BarChart({ id, data, width = 800, height = 500 }) {
   }, []);
   
 
-  return <div id={id} style={{position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center'}}> 
+  return <div id={id} style={{position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center'}}>
   </div>;
 }
 
 export default function App() {
+  
   const [dataset, setDataset] = useState([])
 
   useEffect(() => {
     if (dataset.length == 0){
-      fetch("https://raw.githubusercontent.com/freeCodeCamp/ProjectReferenceData/master/cyclist-data.json")
+      fetch("https://raw.githubusercontent.com/freeCodeCamp/ProjectReferenceData/master/global-temperature.json")
         .then(response => response.json())
         .then(data => {
           setDataset(data);
@@ -165,10 +168,10 @@ export default function App() {
       <Grid item >
         <Box  p={4} style={{backgroundColor: '#f5f5f5'}} borderRadius={40}>
           <Typography variant="h4" component="h1" align = 'center' id='title' gutterBottom>
-            Doping in Professional Bicycle Racing
+            Monthly Global Land-Surface Temperature
           </Typography>
-          <Typography variant="h6" component="h2" align = 'center' id='title' gutterBottom>
-            35 Fastest times up Alpe d'Huez
+          <Typography variant="h6" component="h2" id='description' align = 'center' gutterBottom>
+            Base temperature - {dataset.baseTemperature}
           </Typography>
           {dataset.length != 0 && 
             <BarChart id="barchart" data={dataset} />
