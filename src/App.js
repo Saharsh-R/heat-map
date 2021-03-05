@@ -1,5 +1,4 @@
 import React from 'react';
-import Container from '@material-ui/core/Container';
 import Typography from '@material-ui/core/Typography';
 import Box from '@material-ui/core/Box';
 import Link from '@material-ui/core/Link';
@@ -8,17 +7,16 @@ import d3Tip from "d3-tip";
 import { useEffect, useState,useRef } from 'react';
 import { Grid } from '@material-ui/core';
 import {legendColor} from 'd3-svg-legend';
-import Button from '@material-ui/core/Button';
 
 
 function Copyright() {
   return (
     <Typography variant="body2" color="textSecondary" align="center">
       {'Copyright © '}
-      <Link color="inherit" target="_blank" href="https://saharsh-r.github.io/">
+      <Link  target="_blank" href="https://saharsh-r.github.io/">
         Saharsh Rathi
       </Link>{' '}
-      {new Date().getFullYear()}
+      {new Date().toUTCString()}
       {'.'}
     </Typography>
   );
@@ -107,7 +105,7 @@ function BarChart({ id, data, width = 1200, height = 500 }) {
         // has to be in this way. (e, d) => {} will not work.
           tip.attr('data-year', d.year);
           var formatTime = d3.timeFormat('%Y - %B')
-          var date = new Date(d.year, d.month);
+          var date = new Date(d.year, d.month - 1);
           var str =
               "<span class='date'>" +
               formatTime(date) +
@@ -164,9 +162,9 @@ export default function App() {
   }, [dataset])
   
   return (
-    <Grid container alignItems = 'center' justify = 'center'  style = {{backgroundColor: 'grey'}}>
+    <Grid container alignItems = 'center' justify = 'center'  style = {{backgroundImage: 'linear-gradient(90deg, rgba(46,229,174,1) 12%, rgba(254,185,39,1) 100%)'}}>
       <Grid item >
-        <Box  p={4} style={{backgroundColor: '#f5f5f5'}} borderRadius={40}>
+        <Box boxShadow={24} p={4} style={{backgroundColor: '#f5f5f5'}} borderRadius={40}>
           <Typography variant="h4" component="h1" align = 'center' id='title' gutterBottom>
             Monthly Global Land-Surface Temperature
           </Typography>
